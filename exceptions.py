@@ -1,19 +1,5 @@
-class EnvironmentVariablesMissing(Exception):
-    """Нет необходимых переменных окружения."""
-
-    # message = ''
-
-    # def __init__(self, *args: object, msg: str = '') -> None:
-    #     self.message = msg or self.message
-    #     super().__init__(*args)
-
-    # def __str__(self) -> str:
-    #     return self.message + f'{self.args}'
-    pass
-
-
 class ResponseError(Exception):
-    """Не верный ответ."""
+    """Не верный ответ на запрос к API."""
 
     pass
 
@@ -25,7 +11,7 @@ class ResponseFalse(Exception):
 
 
 class UnknownStatusHomework(Exception):
-    """Неверный статус работы."""
+    """Неверный статус домашней работы."""
 
     pass
 

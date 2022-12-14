@@ -1,25 +1,24 @@
-import requests
+import logging
 import os
 import sys
 import time
-from exceptions import MessegeError, CriticalTokkenError
-from exceptions import UnknownStatusHomework, ResponseError
-import logging
 from http import HTTPStatus
-from telegram import Bot
-from dotenv import load_dotenv
 from logging.handlers import RotatingFileHandler
+
+import requests
+import telegram
+from dotenv import load_dotenv
+
+from exceptions import (CriticalTokkenError, MessegeError, ResponseError,
+                        UnknownStatusHomework)
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 PRACTICUM_TOKEN = os.getenv('YP_TOKEN')
-# PRACTICUM_TOKEN = None
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('CHAT_ID')
-# TELEGRAM_CHAT_ID = None
 
-# RETRY_PERIOD = 30
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
@@ -53,7 +52,7 @@ def check_tokens():
         )
 
 
-def send_message(bot, message):
+def send_message(bot: telegram.Bot, message: str) -> None:
     """Отправка сообщения в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
@@ -63,7 +62,7 @@ def send_message(bot, message):
         raise MessegeError(f'Ошибка при отправке сообщения "{message}"')
 
 
-def get_api_answer(timestamp=0):
+def get_api_answer(timestamp: int) -> dict:
     """Запрос к единственному эндпоинту API-сервиса."""
     PAYLOADS = {'from_date': timestamp}
     try:
@@ -79,7 +78,7 @@ def get_api_answer(timestamp=0):
     return homework_statuses.json()
 
 
-def check_response(response):
+def check_response(response: dict) -> None:
     """Проверка ответа API на соответствие документации."""
     equivalent = ('homeworks', 'current_date')
     if not isinstance(response, dict):
@@ -95,7 +94,7 @@ def check_response(response):
         )
 
 
-def parse_status(homework):
+def parse_status(homework: dict) -> str:
     """Извлечение статуса из информации о конкретной домашней работе."""
     homework_name = homework.get('homework_name')
     status = homework.get('status')
@@ -105,7 +104,7 @@ def parse_status(homework):
     raise UnknownStatusHomework('Неверный статус работы')
 
 
-def main():
+def main() -> None:
     """Основная логика работы бота."""
     try:
         check_tokens()
@@ -113,9 +112,8 @@ def main():
         logger.critical(f'Критическая ошибка:{error}')
         sys.exit('Конец программы')
 
-    bot = Bot(token=TELEGRAM_TOKEN)
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    # timestamp = 0
 
     while True:
         try:
@@ -126,26 +124,15 @@ def main():
                 for homework in response.get('homeworks'):
                     message = parse_status(homework)
                     send_message(bot, message)
-                # message = parse_status(homeworks[0])
-                # send_message(bot, message)
                 timestamp = response.get('current_date')
-                # timestamp = int(time.time())
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(error)
             send_message(bot, message)
-
         time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
-    # logging.basicConfig(
-    #     level=logging.CRITICAL,
-    #     filename='my_logger.log',
-    #     filemode='a',
-    #     encoding="utf-8",
-    #     format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
-    # )
     logger.setLevel(logging.DEBUG)
     streamHandler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
