@@ -68,8 +68,8 @@ def get_api_answer(timestamp: int) -> dict:
             headers=HEADERS,
             params=PAYLOADS,
         )
-    except requests.RequestException as error:
-        raise requests.ConnectionError(f"Ошибка запроса {error}")
+    except requests.exceptions as error:
+        raise requests.ConnectionError(error)
     response_json = response.json()
     if response.status_code != HTTPStatus.OK:
         if set(response_json.keys()) == {'error', 'code'}:
@@ -104,9 +104,7 @@ def parse_status(homework: dict) -> str:
     verdict = HOMEWORK_VERDICTS.get(status)
     if homework_name and status in list(HOMEWORK_VERDICTS.keys()):
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
-    raise UnknownStatusHomework(
-        f'Неверный статус работы"{homework_name}". {verdict}'
-    )
+    raise UnknownStatusHomework(f'Неверный статус работы"{homework_name}"')
 
 
 def main() -> None:
@@ -126,7 +124,7 @@ def main() -> None:
             check_response(response)
             homeworks = response.get("homeworks")
             if homeworks:
-                message = parse_status(homeworks)[0]
+                message = parse_status(homeworks[0])
                 send_message(bot, message)
                 timestamp = response.get("current_date")
         except Exception as error:
