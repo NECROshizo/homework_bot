@@ -1,20 +1,19 @@
 import logging
 import os
-import sys
-import time
-from http import HTTPStatus
-from logging.handlers import RotatingFileHandler
-
 import requests
+import sys
 import telegram
-from dotenv import load_dotenv
+import time
 
+from dotenv import load_dotenv
 from exceptions import (
     CriticalTokkenError,
     MessegeError,
     ResponseError,
     UnknownStatusHomework,
 )
+from http import HTTPStatus
+from logging.handlers import RotatingFileHandler
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -46,8 +45,8 @@ def check_tokens() -> None:
         for name in TOKEN_NAMES:
             if not globals()[name]:
                 raise CriticalTokkenError(f"Неверно определенно: {name}")
-    except NameError as err:
-        raise CriticalTokkenError(err)
+    except NameError as error:
+        raise CriticalTokkenError(error)
 
 
 def send_message(bot: telegram.Bot, message: str) -> None:
@@ -73,7 +72,12 @@ def get_api_answer(timestamp: int) -> dict:
         raise requests.ConnectionError(f"Ошибка запроса {error}")
     response_json = response.json()
     if response.status_code != HTTPStatus.OK:
-        raise ResponseError("Неверный ответ запрооса")
+        if set(response_json.keys()) == {'error', 'code'}:
+            raise ResponseError(
+                response_json.get('error').get('error'),
+                response_json.get('code')
+            )
+        raise ResponseError(f'Неверный ответ запрооса {response.status_code}')
     return response_json
 
 
@@ -100,7 +104,9 @@ def parse_status(homework: dict) -> str:
     verdict = HOMEWORK_VERDICTS.get(status)
     if homework_name and status in list(HOMEWORK_VERDICTS.keys()):
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
-    raise UnknownStatusHomework("Неверный статус работы")
+    raise UnknownStatusHomework(
+        f'Неверный статус работы"{homework_name}". {verdict}'
+    )
 
 
 def main() -> None:
@@ -109,6 +115,7 @@ def main() -> None:
         check_tokens()
     except Exception as error:
         logger.critical(f"Критическая ошибка:{error}", exc_info=True)
+        return -1
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
